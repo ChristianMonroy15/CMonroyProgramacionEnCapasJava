@@ -52,6 +52,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
+import static org.springframework.web.servlet.function.RequestPredicates.path;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
@@ -182,19 +183,40 @@ public class UsuarioController {
     }
 
     @GetMapping("/cargamasiva/procesar")
-    public String CargaMasiva(HttpSession session) {
-        String Path = session.getAttribute("archivoCargaMasiva").toString();
+    public String CargaMasiva(HttpSession session, RedirectAttributes redirectAttributes) {
+        String path = session.getAttribute("archivoCargaMasiva").toString();
         session.removeAttribute("archivoCargaMasiva");
 
+        List<Usuario> usuarios;
+        if (path.endsWith(".txt")) {
+            usuarios = LecturaArchivoTXT(new File(path));
+        } else if (path.endsWith(".xlsx")) {
+            usuarios = LecturaArchivoXLSX(new File(path));
+        } else {
+            redirectAttributes.addFlashAttribute("errorMessage", "Extensión de archivo no soportada.");
+            return "redirect:/usuario/cargamasiva";
+        }
         //inserción con carga masiva
         // 
-        return "CargaMasiva";
+        Result result = usuarioDAOImplementation.AddAll(usuarios);
+        if (result.correct == true) {
+            redirectAttributes.addFlashAttribute("successMessage", "Carga masiva completada exitosamente. Los usuarios fueron insertados en la base de datos.");
+        } else {
+            redirectAttributes.addFlashAttribute("errorMessage", "Ocurrió un error al insertar los usuarios: " + result.ex.getLocalizedMessage());
+        }
+
+        return "redirect:/usuario/cargamasiva";
     }
 
     @PostMapping("/cargamasiva")
     public String CargaMasiva(@RequestParam("archivo") MultipartFile archivo,
             HttpSession session,
-            Model model) {
+            Model model,
+            RedirectAttributes redirectAttributes) {
+
+        if (archivo == null || archivo.isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Debes seleccionar un archivo antes de subirlo.");
+        }
 
         String extension = archivo.getOriginalFilename().split("\\.")[1];
 
@@ -208,6 +230,8 @@ public class UsuarioController {
 
         } catch (Exception ex) {
             String errortransferencia = ex.getLocalizedMessage();
+            redirectAttributes.addFlashAttribute("errorMessage", "Error al subir el archivo: " + ex.getMessage());
+            return "redirect:usuario/cargamasiva";
         }
 
         List<Usuario> usuarios;
@@ -219,18 +243,22 @@ public class UsuarioController {
 
         } else {
             // error de archivo
-            model.addAttribute("errroMessage", "Manda un archivo que sea valido :@");
-            return "CargaMasiva";
+            redirectAttributes.addFlashAttribute("errorMessage", "Formato de archivo no soportado.");
+            return "redirect:/usuario/cargamasiva";
         }
         List<ErrorCarga> errores = ValidarDatosArchivo(usuarios);
         if (errores.isEmpty()) {
             //Boton de procesar
             model.addAttribute("error", false);
             session.setAttribute("archivoCargaMasiva", pathDefinitvo);
+            redirectAttributes.addFlashAttribute("successMessage", "Archivo validado correctamente. Puedes procesarlo.");
+
         } else {
             //Lista Errores
             model.addAttribute("error", true);
             model.addAttribute("errores", errores);
+            redirectAttributes.addFlashAttribute("errorMessage", "Se encontraron errores en el archivo.");
+
         }
         return "CargaMasiva";
     }
@@ -251,16 +279,19 @@ public class UsuarioController {
                 usuario.setNombre(campos[0].trim());
                 usuario.setApellidoPaterno(campos[1].trim());
                 usuario.setApellidoMaterno(campos[2].trim());
+                usuario.setUsername(campos[3].trim());
+                usuario.setEmail(campos[4].trim());
+                usuario.setPassword(campos[5].trim());
+
                 SimpleDateFormat formato = new SimpleDateFormat("yyyy-MM-dd");
-                String fecha = campos[3].trim();
+                String fecha = campos[6].trim();
                 Date fecha2 = formato.parse(fecha);
+
                 usuario.setFechaNacimiento(fecha2);
-                usuario.setTelefono(campos[4].trim());
-                usuario.setUsername(campos[5].trim());
-                usuario.setEmail(campos[6].trim());
-                usuario.setPassword(campos[7].trim());
-                usuario.setSexo(campos[8].trim());
-                usuario.setCelular(campos[9].trim());
+
+                usuario.setSexo(campos[7].trim());
+                usuario.setCelular(campos[8].trim());
+                usuario.setTelefono(campos[9].trim());
                 usuario.setCurp(campos[10].trim());
                 usuario.setRol(new Rol());
                 usuario.Rol.setIdRol(Integer.parseInt(campos[11].trim()));
@@ -296,28 +327,28 @@ public class UsuarioController {
                         row.getCell(2, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK))
                 );
 
-                // Fecha con formato de exel
-                Cell fechaCell = row.getCell(3, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK);
+                usuario.setUsername(formatter.formatCellValue(
+                        row.getCell(3, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK))
+                );
+                usuario.setEmail(formatter.formatCellValue(
+                        row.getCell(4, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK))
+                );
+                usuario.setPassword(formatter.formatCellValue(
+                        row.getCell(5, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK))
+                );
+
+                Cell fechaCell = row.getCell(6, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK);
                 if (fechaCell.getCellType() == CellType.NUMERIC) {
                     usuario.setFechaNacimiento(fechaCell.getDateCellValue());
                 }
 
-                usuario.setTelefono(formatter.formatCellValue(
-                        row.getCell(4, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK))
-                );
-                usuario.setUsername(formatter.formatCellValue(
-                        row.getCell(5, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK))
-                );
-                usuario.setEmail(formatter.formatCellValue(
-                        row.getCell(6, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK))
-                );
-                usuario.setPassword(formatter.formatCellValue(
+                usuario.setSexo(formatter.formatCellValue(
                         row.getCell(7, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK))
                 );
-                usuario.setSexo(formatter.formatCellValue(
+                usuario.setCelular(formatter.formatCellValue(
                         row.getCell(8, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK))
                 );
-                usuario.setCelular(formatter.formatCellValue(
+                usuario.setTelefono(formatter.formatCellValue(
                         row.getCell(9, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK))
                 );
                 usuario.setCurp(formatter.formatCellValue(
