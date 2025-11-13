@@ -7,12 +7,15 @@ import com.digi01.CMonroyProgramacionNCapasSpring.DAO.MunicipioDAOImplementation
 import com.digi01.CMonroyProgramacionNCapasSpring.DAO.PaisDAOImplementation;
 import com.digi01.CMonroyProgramacionNCapasSpring.DAO.RolDAOImplementation;
 import com.digi01.CMonroyProgramacionNCapasSpring.DAO.UsuarioDAOImplementation;
+import com.digi01.CMonroyProgramacionNCapasSpring.DAO.UsuarioJPADAOImplementation;
 import com.digi01.CMonroyProgramacionNCapasSpring.ML.Direccion;
 import com.digi01.CMonroyProgramacionNCapasSpring.ML.ErrorCarga;
 import com.digi01.CMonroyProgramacionNCapasSpring.ML.Pais;
 import com.digi01.CMonroyProgramacionNCapasSpring.ML.Result;
 import com.digi01.CMonroyProgramacionNCapasSpring.ML.Rol;
 import com.digi01.CMonroyProgramacionNCapasSpring.ML.Usuario;
+import com.digi01.CMonroyProgramacionNCapasSpring.Service.DireccionService;
+import com.digi01.CMonroyProgramacionNCapasSpring.Service.UsuarioService;
 import com.digi01.CMonroyProgramacionNCapasSpring.Service.ValidationService;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
@@ -60,6 +63,12 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class UsuarioController {
 
     @Autowired
+    private UsuarioService usuarioService;
+    
+    @Autowired
+    private DireccionService direccionService;
+
+    @Autowired
     private ValidationService validationService;
 
     @Autowired
@@ -83,6 +92,9 @@ public class UsuarioController {
     @Autowired
     private ColoniaDAOImplementation coloniaDAOImplementation;
 
+    @Autowired
+    private UsuarioJPADAOImplementation usuarioJPADAOImplementation;
+
     @GetMapping("estado/{idPais}")
     @ResponseBody //Retorna dato Estucturado
     public Result GetEstadosByIdPais(@PathVariable("idPais") int idPais) {
@@ -103,8 +115,10 @@ public class UsuarioController {
 
     @GetMapping()
     public String Index(Model model) {
-        Result result = usuarioDAOImplementation.GetAll();
-        model.addAttribute("usuarios", result.objects);
+        //Result result = usuarioDAOImplementation.GetAll();
+        List<Usuario> usuarios = usuarioService.GetAll();
+        //Result resultJPA = usuarioJPADAOImplementation.GetAll();
+        model.addAttribute("usuarios", usuarios);
         model.addAttribute("paises", paisDAOImplementation);
         model.addAttribute("roles", rolDAOImplementation.GetAll().objects);
 
@@ -123,10 +137,11 @@ public class UsuarioController {
     @GetMapping("{detail}")
     public String Detail(@PathVariable("detail") int detail, Model model) {
 
-        Result result = usuarioDAOImplementation.GetById(detail);
+        //Result result = usuarioDAOImplementation.GetById(detail);
+        Usuario result = usuarioService.GetById(detail);
 
         model.addAttribute("roles", rolDAOImplementation.GetAll().objects);
-        model.addAttribute("usuario", result.object);
+        model.addAttribute("usuario", result);
         model.addAttribute("Direccion", new Direccion());
         model.addAttribute("paises", paisDAOImplementation.GetAll().objects);
 
@@ -144,7 +159,8 @@ public class UsuarioController {
             Model model,
             RedirectAttributes redirectAttributes) {
 
-        Result result = usuarioDAOImplementation.Delete(idUsuario);
+        //Result result = usuarioDAOImplementation.Delete(idUsuario);
+        Result result = usuarioService.Delete(idUsuario);
 
         redirectAttributes.addFlashAttribute("resultDelete", result);
         return "redirect:/usuario";
@@ -157,16 +173,20 @@ public class UsuarioController {
             RedirectAttributes redirectAttributes) {
 
         if (direccion.getIdDireccion() > 0) {
-            Result result = direccionDAOImplementation.Update(direccion);
-            if (result.correct == true) {
+            
+            //Result result = direccionDAOImplementation.Update(direccion);
+            boolean result = direccionService.Update(direccion, idUsuario);
+            if (result == true) {
                 redirectAttributes.addFlashAttribute("successMessage", "Se Actualizo la direccion correctamente");
             } else {
                 redirectAttributes.addFlashAttribute("errorMessage", "No se Actualizo la direccion");
             }
         }
         if (direccion.getIdDireccion() == 0) {
-            Result result = direccionDAOImplementation.Add(direccion, idUsuario);
-            if (result.correct == true) {
+            
+            //Result result = direccionDAOImplementation.Add(direccion, idUsuario);
+            boolean result = direccionService.Add(direccion, idUsuario);
+            if (result == true) {
                 redirectAttributes.addFlashAttribute("successMessage", "Se agrego la direccion correctamente");
             } else {
                 redirectAttributes.addFlashAttribute("errorMessage", "No se agrego la direccion");
@@ -261,6 +281,110 @@ public class UsuarioController {
 
         }
         return "CargaMasiva";
+    }
+
+    @PostMapping("/imagen/update")
+    public String actualizarImagen(@RequestParam int idUsuario,
+            @RequestParam String imagen) {
+        if (imagen.contains(",")) {
+            imagen = imagen.split(",")[1];
+        }
+        usuarioDAOImplementation.UpdateImagen(idUsuario, imagen);
+        return "redirect:/usuario/" + idUsuario;
+    }
+
+    @PostMapping("/detail")
+    public String UpdateUsuario(@ModelAttribute("usuario") Usuario usuario,
+            RedirectAttributes redirectAttributes) {
+        
+        Result result = usuarioService.Update(usuario);
+
+        //Result result = usuarioDAOImplementation.Update(usuario);
+
+        if (result.correct == true) {
+            redirectAttributes.addFlashAttribute("successMessage", "Se actualizo la informacion del usuario " + usuario.getUsername());
+        } else {
+            redirectAttributes.addFlashAttribute("errorMessage", "Se actualizo la informacion del usuario " + usuario.getUsername());
+        }
+        return "redirect:/usuario/" + usuario.getIdUsuario();
+    }
+
+    @PostMapping("add")
+    public String Add(@Valid @ModelAttribute("Usuario") Usuario usuario,
+            BindingResult bindingResult,
+            Model model,
+            RedirectAttributes redirectAttributes,
+            @RequestParam("imagenFile") MultipartFile imagenFile) {
+
+        if (bindingResult.hasErrors()) {
+
+            model.addAttribute("Usuario", usuario); // colonia tiene, municipio, estado y que pais
+            model.addAttribute("roles", rolDAOImplementation.GetAll().objects);
+            model.addAttribute("paises", paisDAOImplementation.GetAll().objects);
+
+            if (usuario.Direcciones.get(0).Colonia.Municipio.Estado.Pais.getIdPais() > 0) {
+                model.addAttribute("estados", estadoDAOImplementation.GetByIdPais(usuario.Direcciones.get(0).Colonia.Municipio.Estado.Pais.getIdPais()).objects);
+                if (usuario.Direcciones.get(0).Colonia.Municipio.Estado.getIdEstado() > 0) {
+                    model.addAttribute("municipios", municipioDAOImplementation.GetByIdEstado(usuario.Direcciones.get(0).Colonia.Municipio.Estado.getIdEstado()).objects);
+                    if (usuario.Direcciones.get(0).Colonia.Municipio.getIdMunicipio() > 0) {
+                        model.addAttribute("colonias", coloniaDAOImplementation.GetByIdMunicipio(usuario.Direcciones.get(0).Colonia.Municipio.getIdMunicipio()).objects);
+                    }
+                }
+            }
+            redirectAttributes.addFlashAttribute("errorMessageAdd", "Revisa que los sean campos validos y esten completos");
+
+            return "UsuarioForm";
+
+        }
+
+        if (imagenFile != null && !imagenFile.isEmpty()) {
+            try {
+
+                String nombreArchivo = imagenFile.getOriginalFilename();
+
+                // Validamos que no venga null y que contenga punto
+                if (nombreArchivo != null && nombreArchivo.contains(".")) {
+
+                    String[] partes = nombreArchivo.split("\\.");
+                    String extension = partes[partes.length - 1]; // último segmento
+
+                    if (extension.equalsIgnoreCase("jpg") || extension.equalsIgnoreCase("png")) {
+                        byte[] byteImagen = imagenFile.getBytes();
+                        String imagenBase64 = Base64.getEncoder().encodeToString(byteImagen);
+                        usuario.setImagen(imagenBase64);
+                    }
+                }
+
+            } catch (IOException ex) {
+                Logger.getLogger(UsuarioController.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        //alumnoDAOImplementation
+        boolean result = usuarioService.Add(usuario);
+        //Result result = usuarioDAOImplementation.Add(usuario);
+        redirectAttributes.addFlashAttribute("successMessageAdd", "El usuario " + usuario.getUsername() + "se creo con exito.");
+        return "redirect:/usuario";
+    }
+
+    @PostMapping("deleteDireccion")
+    public String DeleteDireccion(int IdDireccion,
+            @RequestParam("IdUsuario") int IdUsuario,
+            RedirectAttributes redirectAttributes) {
+
+        Result result = direccionDAOImplementation.Delete(IdDireccion);
+
+        return "redirect:/usuario/" + IdUsuario;
+    }
+
+    @PostMapping()
+    public String GetAllDinamico(@ModelAttribute("usuariosBusqueda") Usuario usuario, Model model) {
+        Result result = usuarioDAOImplementation.GetAllDinamico(usuario);
+
+        model.addAttribute("usuarios", result.objects);
+        model.addAttribute("roles", rolDAOImplementation.GetAll().objects);
+        model.addAttribute("usuariosBusqueda", usuario);
+
+        return "UsuarioIndex";
     }
 
     public List<Usuario> LecturaArchivoTXT(File archivo) {
@@ -393,106 +517,4 @@ public class UsuarioController {
         }
         return erroresCarga;
     }
-
-    @PostMapping("/imagen/update")
-    public String actualizarImagen(@RequestParam int idUsuario,
-            @RequestParam String imagen) {
-        if (imagen.contains(",")) {
-            imagen = imagen.split(",")[1];
-        }
-        usuarioDAOImplementation.UpdateImagen(idUsuario, imagen);
-        return "redirect:/usuario/" + idUsuario;
-    }
-
-    @PostMapping("/detail")
-    public String UpdateUsuario(@ModelAttribute("usuario") Usuario usuario,
-            RedirectAttributes redirectAttributes) {
-
-        Result result = usuarioDAOImplementation.Update(usuario);
-
-        if (result.correct == true) {
-            redirectAttributes.addFlashAttribute("successMessage", "Se actualizo la informacion del usuario " + usuario.getUsername());
-        } else {
-            redirectAttributes.addFlashAttribute("errorMessage", "Se actualizo la informacion del usuario " + usuario.getUsername());
-        }
-        return "redirect:/usuario/" + usuario.getIdUsuario();
-    }
-
-    @PostMapping("add")
-    public String Add(@Valid @ModelAttribute("Usuario") Usuario usuario,
-            BindingResult bindingResult,
-            Model model,
-            RedirectAttributes redirectAttributes,
-            @RequestParam("imagenFile") MultipartFile imagenFile) {
-
-        if (bindingResult.hasErrors()) {
-
-            model.addAttribute("Usuario", usuario); // colonia tiene, municipio, estado y que pais
-            model.addAttribute("roles", rolDAOImplementation.GetAll().objects);
-            model.addAttribute("paises", paisDAOImplementation.GetAll().objects);
-
-            if (usuario.Direcciones.get(0).Colonia.Municipio.Estado.Pais.getIdPais() > 0) {
-                model.addAttribute("estados", estadoDAOImplementation.GetByIdPais(usuario.Direcciones.get(0).Colonia.Municipio.Estado.Pais.getIdPais()).objects);
-                if (usuario.Direcciones.get(0).Colonia.Municipio.Estado.getIdEstado() > 0) {
-                    model.addAttribute("municipios", municipioDAOImplementation.GetByIdEstado(usuario.Direcciones.get(0).Colonia.Municipio.Estado.getIdEstado()).objects);
-                    if (usuario.Direcciones.get(0).Colonia.Municipio.getIdMunicipio() > 0) {
-                        model.addAttribute("colonias", coloniaDAOImplementation.GetByIdMunicipio(usuario.Direcciones.get(0).Colonia.Municipio.getIdMunicipio()).objects);
-                    }
-                }
-            }
-            redirectAttributes.addFlashAttribute("errorMessageAdd", "Revisa que los sean campos validos y esten completos");
-
-            return "UsuarioForm";
-
-        }
-
-        if (imagenFile != null && !imagenFile.isEmpty()) {
-            try {
-
-                String nombreArchivo = imagenFile.getOriginalFilename();
-
-                // Validamos que no venga null y que contenga punto
-                if (nombreArchivo != null && nombreArchivo.contains(".")) {
-
-                    String[] partes = nombreArchivo.split("\\.");
-                    String extension = partes[partes.length - 1]; // último segmento
-
-                    if (extension.equalsIgnoreCase("jpg") || extension.equalsIgnoreCase("png")) {
-                        byte[] byteImagen = imagenFile.getBytes();
-                        String imagenBase64 = Base64.getEncoder().encodeToString(byteImagen);
-                        usuario.setImagen(imagenBase64);
-                    }
-                }
-
-            } catch (IOException ex) {
-                Logger.getLogger(UsuarioController.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
-
-        Result result = usuarioDAOImplementation.Add(usuario);
-        redirectAttributes.addFlashAttribute("successMessageAdd", "El usuario " + usuario.getUsername() + "se creo con exito.");
-        return "redirect:/usuario";
-    }
-
-    @PostMapping("deleteDireccion")
-    public String DeleteDireccion(int IdDireccion,
-            @RequestParam("IdUsuario") int IdUsuario,
-            RedirectAttributes redirectAttributes) {
-
-        Result result = direccionDAOImplementation.Delete(IdDireccion);
-
-        return "redirect:/usuario/" + IdUsuario;
-    }
-
-    @PostMapping()
-    public String GetAllDinamico(@ModelAttribute("usuariosBusqueda") Usuario usuario, Model model) {
-        Result result = usuarioDAOImplementation.GetAllDinamico(usuario);
-
-        model.addAttribute("usuarios", result.objects);
-        model.addAttribute("roles", rolDAOImplementation.GetAll().objects);
-        model.addAttribute("usuariosBusqueda", usuario);
-
-        return "UsuarioIndex";
-    }
-
 }
