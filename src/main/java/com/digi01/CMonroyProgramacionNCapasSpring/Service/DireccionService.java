@@ -40,26 +40,40 @@ public class DireccionService {
 
         return result.correct;
     }
-    
+
     @Transactional
-    public boolean Update(Direccion direccion, int IdUsuario){
-    Result result = new Result();
-    
+    public boolean Update(Direccion direccion, int IdUsuario) {
+        Result result = new Result();
+
         try {
-            
             DireccionJPA direccionJPA = direccionMapper.mapToDireccionJPA(direccion);
-            direccionJPADAOImplementation.Update(direccionJPA,IdUsuario);
+            direccionJPADAOImplementation.Update(direccionJPA, IdUsuario);
             result.correct = true;
-            
         } catch (Exception ex) {
-            
             result.correct = false;
             result.errorMessage = ex.getLocalizedMessage();
             result.ex = ex;
-            
         }
-    
-    return result.correct;
+        return result.correct;
+    }
+
+    @Transactional
+    public boolean Delete(int IdDireccion) {
+        Result result = new Result();
+        try {
+
+            direccionJPADAOImplementation.Delete(IdDireccion);
+            result.correct = true;
+
+        } catch (Exception ex) {
+
+            result.correct = false;
+            result.errorMessage = ex.getLocalizedMessage();
+            result.ex = ex;
+
+        }
+
+        return result.correct;
     }
 
 }

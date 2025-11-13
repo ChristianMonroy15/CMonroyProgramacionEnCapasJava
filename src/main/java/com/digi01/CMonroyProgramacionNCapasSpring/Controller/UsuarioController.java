@@ -370,8 +370,9 @@ public class UsuarioController {
     public String DeleteDireccion(int IdDireccion,
             @RequestParam("IdUsuario") int IdUsuario,
             RedirectAttributes redirectAttributes) {
-
-        Result result = direccionDAOImplementation.Delete(IdDireccion);
+        
+        Boolean result = direccionService.Delete(IdDireccion);
+        //Result result = direccionDAOImplementation.Delete(IdDireccion);
 
         return "redirect:/usuario/" + IdUsuario;
     }
