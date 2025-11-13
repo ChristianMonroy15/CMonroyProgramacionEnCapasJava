@@ -10,6 +10,7 @@ public interface IDireccionJPA {
     Result Add (DireccionJPA direccionJPA, int IdUsuario);
     Result Update(DireccionJPA direccionJPA, int IdUsuario);
     Result Delete (int IdDireccion);
+    Result GetById (int IdDireccion);
     
     
     

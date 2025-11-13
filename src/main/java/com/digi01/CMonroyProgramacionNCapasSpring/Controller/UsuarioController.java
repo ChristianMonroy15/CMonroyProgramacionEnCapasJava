@@ -151,7 +151,9 @@ public class UsuarioController {
     @GetMapping("/direccion/{idDireccion}")
     @ResponseBody
     public Direccion getDireccion(@PathVariable int idDireccion) {
-        return (Direccion) direccionDAOImplementation.GetById(idDireccion).object;
+        
+        return direccionService.GetById(idDireccion);
+        //return (Direccion) direccionDAOImplementation.GetById(idDireccion).object;
     }
 
     @GetMapping("deleteUsuario/{idUsuario}")

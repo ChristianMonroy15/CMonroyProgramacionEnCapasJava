@@ -75,5 +75,13 @@ public class DireccionService {
 
         return result.correct;
     }
+    
+    public Direccion GetById(int IdDireccion){
+    
+        Result result = direccionJPADAOImplementation.GetById(IdDireccion);
+        result.object = direccionMapper.mapToDireccion((DireccionJPA) result.object);
+        return (Direccion) result.object;
+        
+    }
 
 }
