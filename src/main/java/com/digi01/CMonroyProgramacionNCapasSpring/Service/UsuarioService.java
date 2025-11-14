@@ -5,13 +5,20 @@ import com.digi01.CMonroyProgramacionNCapasSpring.JPA.UsuarioJPA;
 import com.digi01.CMonroyProgramacionNCapasSpring.MAPPER.UsuarioMapper;
 import com.digi01.CMonroyProgramacionNCapasSpring.ML.Result;
 import com.digi01.CMonroyProgramacionNCapasSpring.ML.Usuario;
+import java.lang.reflect.Type;
 import java.util.List;
+import org.modelmapper.ModelMapper;
+import org.modelmapper.TypeToken;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class UsuarioService {
+    
+    @Autowired
+    private ModelMapper modelMapper;
 
     @Autowired
     private UsuarioJPADAOImplementation usuarioJPADAOImplementation;
@@ -25,6 +32,14 @@ public class UsuarioService {
                 .stream()
                 .map(usuarioMapper::mapToUsuario)
                 .toList();
+    }
+    
+    public List<Usuario> GetAllDinamico (Usuario usuario){
+        Result result = usuarioJPADAOImplementation.GetAllDinamico(usuario);
+        Type tipoLista = new TypeToken<List<Usuario>>(){}.getType();
+        List<Usuario> usuarios = modelMapper.map(((List<UsuarioJPA>) (List<?>) result.objects), tipoLista);
+        
+        return usuarios;
     }
 
     @Transactional

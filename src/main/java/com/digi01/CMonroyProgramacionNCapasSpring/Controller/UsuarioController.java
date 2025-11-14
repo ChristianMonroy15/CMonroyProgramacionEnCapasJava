@@ -381,9 +381,10 @@ public class UsuarioController {
 
     @PostMapping()
     public String GetAllDinamico(@ModelAttribute("usuariosBusqueda") Usuario usuario, Model model) {
-        Result result = usuarioDAOImplementation.GetAllDinamico(usuario);
+        List<Usuario> result = usuarioService.GetAllDinamico(usuario);
+        //Result result = usuarioDAOImplementation.GetAllDinamico(usuario);
 
-        model.addAttribute("usuarios", result.objects);
+        model.addAttribute("usuarios", result);
         model.addAttribute("roles", rolDAOImplementation.GetAll().objects);
         model.addAttribute("usuariosBusqueda", usuario);
 

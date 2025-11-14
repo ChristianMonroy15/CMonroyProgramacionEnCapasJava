@@ -5,6 +5,9 @@ import com.digi01.CMonroyProgramacionNCapasSpring.MAPPER.UsuarioMapper;
 import com.digi01.CMonroyProgramacionNCapasSpring.ML.Result;
 import com.digi01.CMonroyProgramacionNCapasSpring.ML.Usuario;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.Parameter;
+import jakarta.persistence.ParameterMode;
+import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -77,37 +80,76 @@ public class UsuarioJPADAOImplementation implements IUsuarioJPA {
     @Override
     public Result Update(UsuarioJPA usuarioJPA) {
         Result result = new Result();
-        
+
         try {
-            
+
             entityManager.merge(usuarioJPA);
             result.correct = true;
-            
+
         } catch (Exception ex) {
             result.correct = false;
             result.errorMessage = ex.getLocalizedMessage();
             result.ex = ex;
         }
-        
+
         return result;
     }
 
     @Override
     public Result Delete(int IdUsuario) {
         Result result = new Result();
-        
+
         try {
-            
+
             UsuarioJPA usuarioJPA = entityManager.find(UsuarioJPA.class, IdUsuario);
             entityManager.remove(usuarioJPA);
             result.correct = true;
         } catch (Exception ex) {
-            
+
             result.correct = false;
             result.errorMessage = ex.getLocalizedMessage();
             result.ex = ex;
-                                        
+
         }
+        return result;
+    }
+
+    @Override
+    public Result GetAllDinamico(Usuario usuario) {
+        Result result = new Result();
+
+        try {
+
+            String queryDinamica = "FROM UsuarioJPA usuarioJPA WHERE ";
+            queryDinamica = queryDinamica + "LOWER(usuarioJPA.Nombre) LIKE LOWER(:Nombre) ";
+            queryDinamica = queryDinamica + "AND LOWER(usuarioJPA.ApellidoPaterno) LIKE LOWER(:ApellidoPaterno) ";
+            queryDinamica = queryDinamica + "AND LOWER(usuarioJPA.ApellidoMaterno) LIKE LOWER(:ApellidoMaterno) ";
+
+            if (usuario.getRol() != null && usuario.getRol().getIdRol() > 0) {
+                queryDinamica += "AND usuarioJPA.Rol.IdRol = :IdRol ";
+            }
+
+            queryDinamica = queryDinamica + "ORDER BY usuarioJPA.IdUsuario";
+
+            TypedQuery<UsuarioJPA> query = entityManager.createQuery(queryDinamica, UsuarioJPA.class);
+
+            query.setParameter("Nombre", "%" + usuario.getNombre() + "%");
+            query.setParameter("ApellidoPaterno", "%" + usuario.getApellidoPaterno() + "%");
+            query.setParameter("ApellidoMaterno", "%" + usuario.getApellidoMaterno() + "%");
+
+            if (usuario.getRol() != null && usuario.getRol().getIdRol() > 0) {
+                query.setParameter("IdRol", usuario.getRol().getIdRol());
+            }
+
+            result.objects = (List<Object>) (List<?>) query.getResultList();
+            result.correct = true;
+
+        } catch (Exception ex) {
+            result.correct = false;
+            result.errorMessage = ex.getLocalizedMessage();
+            result.ex = ex;
+        }
+
         return result;
     }
 

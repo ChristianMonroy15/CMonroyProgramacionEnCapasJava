@@ -15,5 +15,7 @@ public interface IUsuarioJPA {
     Result Update(UsuarioJPA usuarioJPA);
     
     Result Delete(int IdUsuario);
+    
+    Result GetAllDinamico(Usuario usuario);
 
 }
