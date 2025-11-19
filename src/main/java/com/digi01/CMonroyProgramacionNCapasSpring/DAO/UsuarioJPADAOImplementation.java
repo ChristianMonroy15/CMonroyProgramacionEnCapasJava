@@ -153,4 +153,9 @@ public class UsuarioJPADAOImplementation implements IUsuarioJPA {
         return result;
     }
 
+    @Override
+    public Result UpdateImagen(int IdUsuario, String Imagen) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
+
 }

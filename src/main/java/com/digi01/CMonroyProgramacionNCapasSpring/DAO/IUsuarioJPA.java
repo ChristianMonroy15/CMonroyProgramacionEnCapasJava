@@ -16,6 +16,8 @@ public interface IUsuarioJPA {
     
     Result Delete(int IdUsuario);
     
+    Result UpdateImagen(int IdUsuario, String Imagen);
+    
     Result GetAllDinamico(Usuario usuario);
 
 }
