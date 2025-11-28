@@ -68,7 +68,7 @@ public class UsuarioJPA {
     private String Celular;
 
     @Column(name = "username")
-    private String Username;
+    private String userName;
 
     @Column(name = "curp")
     private String Curp;
@@ -83,6 +83,21 @@ public class UsuarioJPA {
 
     @OneToMany(mappedBy = "UsuarioJPA", cascade = CascadeType.ALL, orphanRemoval = true)
     public List<DireccionJPA> DireccionesJPA = new ArrayList<>() ;
+    
+     public String getUserName() {
+        return userName;
+    }
 
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+
+    public String getPassword() {
+        return Password;
+    }
+
+    public void setPassword(String Password) {
+        this.Password = Password;
+    }
    
 }

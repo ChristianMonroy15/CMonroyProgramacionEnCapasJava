@@ -64,7 +64,7 @@ public class UsuarioController {
 
     @Autowired
     private UsuarioService usuarioService;
-    
+
     @Autowired
     private DireccionService direccionService;
 
@@ -151,7 +151,7 @@ public class UsuarioController {
     @GetMapping("/direccion/{idDireccion}")
     @ResponseBody
     public Direccion getDireccion(@PathVariable int idDireccion) {
-        
+
         return direccionService.GetById(idDireccion);
         //return (Direccion) direccionDAOImplementation.GetById(idDireccion).object;
     }
@@ -175,7 +175,7 @@ public class UsuarioController {
             RedirectAttributes redirectAttributes) {
 
         if (direccion.getIdDireccion() > 0) {
-            
+
             //Result result = direccionDAOImplementation.Update(direccion);
             boolean result = direccionService.Update(direccion, idUsuario);
             if (result == true) {
@@ -185,7 +185,7 @@ public class UsuarioController {
             }
         }
         if (direccion.getIdDireccion() == 0) {
-            
+
             //Result result = direccionDAOImplementation.Add(direccion, idUsuario);
             boolean result = direccionService.Add(direccion, idUsuario);
             if (result == true) {
@@ -238,6 +238,7 @@ public class UsuarioController {
 
         if (archivo == null || archivo.isEmpty()) {
             redirectAttributes.addFlashAttribute("errorMessage", "Debes seleccionar un archivo antes de subirlo.");
+            return "redirect:/usuario/cargamasiva"; // <- CORRECCIÓN
         }
 
         String extension = archivo.getOriginalFilename().split("\\.")[1];
@@ -249,40 +250,21 @@ public class UsuarioController {
 
         try {
             archivo.transferTo(new File(pathDefinitvo));
-
         } catch (Exception ex) {
-            String errortransferencia = ex.getLocalizedMessage();
             redirectAttributes.addFlashAttribute("errorMessage", "Error al subir el archivo: " + ex.getMessage());
-            return "redirect:usuario/cargamasiva";
+            return "redirect:/usuario/cargamasiva";
         }
 
-        List<Usuario> usuarios;
-        if (extension.equalsIgnoreCase("txt")) {
-            usuarios = LecturaArchivoTXT(new File(pathDefinitvo));
-
-        } else if (extension.equalsIgnoreCase("xlsx")) {
-            usuarios = LecturaArchivoXLSX(new File(pathDefinitvo));
-
-        } else {
-            // error de archivo
+        // Validación simple de extensión
+        if (!extension.equalsIgnoreCase("txt") && !extension.equalsIgnoreCase("xlsx")) {
             redirectAttributes.addFlashAttribute("errorMessage", "Formato de archivo no soportado.");
             return "redirect:/usuario/cargamasiva";
         }
-        List<ErrorCarga> errores = ValidarDatosArchivo(usuarios);
-        if (errores.isEmpty()) {
-            //Boton de procesar
-            model.addAttribute("error", false);
-            session.setAttribute("archivoCargaMasiva", pathDefinitvo);
-            redirectAttributes.addFlashAttribute("successMessage", "Archivo validado correctamente. Puedes procesarlo.");
 
-        } else {
-            //Lista Errores
-            model.addAttribute("error", true);
-            model.addAttribute("errores", errores);
-            redirectAttributes.addFlashAttribute("errorMessage", "Se encontraron errores en el archivo.");
+        redirectAttributes.addFlashAttribute("successMessage", "Archivo guardado correctamente. Ahora puedes procesarlo.");
+        session.setAttribute("archivoCargaMasiva", pathDefinitvo);
 
-        }
-        return "CargaMasiva";
+        return "redirect:/usuario/cargamasiva"; // <- REDIRECT para que funcione el flash
     }
 
     @PostMapping("/imagen/update")
@@ -298,11 +280,10 @@ public class UsuarioController {
     @PostMapping("/detail")
     public String UpdateUsuario(@ModelAttribute("usuario") Usuario usuario,
             RedirectAttributes redirectAttributes) {
-        
+
         Result result = usuarioService.Update(usuario);
 
         //Result result = usuarioDAOImplementation.Update(usuario);
-
         if (result.correct == true) {
             redirectAttributes.addFlashAttribute("successMessage", "Se actualizo la informacion del usuario " + usuario.getUsername());
         } else {
@@ -372,7 +353,7 @@ public class UsuarioController {
     public String DeleteDireccion(int IdDireccion,
             @RequestParam("IdUsuario") int IdUsuario,
             RedirectAttributes redirectAttributes) {
-        
+
         Boolean result = direccionService.Delete(IdDireccion);
         //Result result = direccionDAOImplementation.Delete(IdDireccion);
 
